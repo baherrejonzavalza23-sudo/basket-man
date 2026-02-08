@@ -198,6 +198,7 @@
                     <h3>ROTATION MINUTES</h3>
                     <h3 id="total-mins">240/240</h3>
                 </div>
+                <p style="font-size:0.8rem; color:#aaa;">Must equal 240 mins. If not, auto-fixed before games.</p>
                 <div id="rotation-list" class="scroll-list"></div>
             </div>
 
@@ -253,7 +254,7 @@
     </div>
 
     <script>
-        /* --- 1. DATASETS --- */
+        /* --- 1. DATASETS (With Name Pools) --- */
         const POSITIONS = ["PG", "SG", "SF", "PF", "C"];
         const TEAMS_DB = [
             {name:"Atlanta Hawks", abbr:"ATL", color:"#E03A3E", players:["Trae Young","Dejounte Murray","Clint Capela","Bogdan Bogdanovic","Jalen Johnson","De'Andre Hunter","Onyeka Okongwu","Saddiq Bey","Kobe Bufkin","AJ Griffin","Bruno Fernando","Garrison Mathews","Wesley Matthews","Trent Forrest","Mouhamed Gueye"]},
@@ -290,13 +291,17 @@
         const REAL_FA = ["John Wall","Blake Griffin","DeMarcus Cousins","Dwight Howard","Kemba Walker","Danny Green","George Hill","Ish Smith","Will Barton"];
         const REAL_COACHES = ["Steve Kerr","Erik Spoelstra","Gregg Popovich","Tyronn Lue","Nick Nurse","Joe Mazzulla","Michael Malone","Rick Carlisle","Tom Thibodeau"];
         const REAL_SCOUTS = ["Jerry West","Danny Ainge","Pat Riley","Sam Presti","Masai Ujiri"];
+        
+        // Random Name Generator Pools
+        const FIRST_NAMES = ["James","John","Robert","Michael","William","David","Richard","Joseph","Thomas","Charles","Christopher","Daniel","Matthew","Anthony","Donald","Mark","Paul","Steven","Andrew","Kenneth","Joshua","Kevin","Brian","George","Edward","Ronald","Timothy","Jason","Jeffrey","Ryan","Jacob","Gary","Nicholas","Eric","Jonathan","Stephen","Larry","Justin","Scott","Brandon","Benjamin","Samuel","Frank","Gregory","Raymond","Alexander","Patrick","Jack","Dennis","Jerry","Tyler","Aaron","Jose","Adam","Henry","Nathan","Douglas","Zachary","Peter","Kyle","Walter","Ethan","Jeremy","Harold","Keith","Christian","Roger","Noah","Gerald","Carl","Terry","Sean","Austin","Arthur","Lawrence","Jesse","Dylan","Bryan","Joe","Jordan","Billy","Bruce","Albert","Willie","Gabriel","Logan","Alan","Juan","Wayne","Roy","Ralph","Randy","Eugene","Vincent","Russell","Elijah","Louis","Bobby","Philip","Johnny"];
+        const LAST_NAMES = ["Smith","Johnson","Williams","Brown","Jones","Garcia","Miller","Davis","Rodriguez","Martinez","Hernandez","Lopez","Gonzalez","Wilson","Anderson","Thomas","Taylor","Moore","Jackson","Martin","Lee","Perez","Thompson","White","Harris","Sanchez","Clark","Ramirez","Lewis","Robinson","Walker","Young","Allen","King","Wright","Scott","Torres","Nguyen","Hill","Flores","Green","Adams","Nelson","Baker","Hall","Rivera","Campbell","Mitchell","Carter","Roberts","Gomez","Phillips","Evans","Turner","Diaz","Parker","Cruz","Edwards","Collins","Reyes","Stewart","Morris","Morales","Murphy","Cook","Rogers","Gutierrez","Ortiz","Morgan","Cooper","Peterson","Bailey","Reed","Kelly","Howard","Ramos","Kim","Cox","Ward","Richardson","Watson","Brooks","Chavez","Wood","James","Bennett","Gray","Mendoza","Ruiz","Hughes","Price","Alvarez","Castillo","Sanders","Patel","Myers","Long","Ross","Foster","Jimenez"];
 
         /* --- 2. GAME STATE --- */
         let GAME = {
             userId: 0,
             year: 2024,
             day: 1,
-            phase: 'regular', // regular, playoffs, draft
+            phase: 'regular',
             teams: [],
             schedule: [],
             news: [],
@@ -349,7 +354,7 @@
             GAME.phase = 'regular';
             GAME.teams = TEAMS_DB.map(t => genTeam(t));
             GAME.fa = REAL_FA.map(n => genPlayer(n, true));
-            while(GAME.fa.length < 20) GAME.fa.push(genPlayer(null, false));
+            while(GAME.fa.length < 30) GAME.fa.push(genPlayer(null, false));
             
             // Staff
             GAME.staffPool.c = REAL_COACHES.map(n => ({name:n, rating:4+Math.floor(Math.random()*2)}));
@@ -395,8 +400,12 @@
         }
 
         function genPlayer(name, isStar) {
+            if(!name) { 
+                let fn = FIRST_NAMES[Math.floor(Math.random()*FIRST_NAMES.length)];
+                let ln = LAST_NAMES[Math.floor(Math.random()*LAST_NAMES.length)];
+                name = `${fn} ${ln}`;
+            }
             let rat = isStar ? 85+Math.floor(Math.random()*14) : 70+Math.floor(Math.random()*10);
-            if(!name) { name = `Player ${Math.floor(Math.random()*9000)}`; rat -= 5; }
             return {
                 id: Math.random().toString(36).substr(2,9),
                 name: name, rating: rat, age: 19+Math.floor(Math.random()*15),
@@ -415,16 +424,56 @@
             }
         }
 
-        /* --- 6. SIMULATION --- */
+        /* --- 6. LOGIC: 12-Man Min & 240 Mins --- */
+        function checkRosterCompliance() {
+            GAME.teams.forEach(t => {
+                // Min 12 players
+                while(t.roster.length < 12 && GAME.fa.length > 0) {
+                    let p = GAME.fa.shift();
+                    t.roster.push(p);
+                }
+                // Max 15 players (AI cut)
+                if(t.roster.length > 15) {
+                    t.roster.sort((a,b)=>a.rating - b.rating);
+                    let cut = t.roster.shift(); // Remove worst
+                    GAME.fa.push(cut);
+                }
+            });
+        }
+
+        function enforceMinutes() {
+            // Fix user team specifically visually and logically
+            let userTeam = GAME.teams[GAME.userId];
+            let total = userTeam.roster.reduce((sum,p) => sum + p.minutes, 0);
+            
+            if(total !== 240) {
+                let diff = 240 - total;
+                // Distribute to starters (first 5 sorted by rating generally)
+                let starters = userTeam.roster.slice(0,5);
+                starters.forEach(p => {
+                    let add = Math.floor(diff / 5);
+                    p.minutes += add;
+                });
+                // Remainder
+                userTeam.roster[0].minutes += (diff % 5);
+                // Clamp 0-48
+                userTeam.roster.forEach(p => p.minutes = Math.max(0, Math.min(48, p.minutes)));
+            }
+        }
+
+        /* --- 7. SIMULATION --- */
         function simDay() {
             if(GAME.phase !== 'regular') return;
             if(GAME.day > SEASON_LEN) { startPlayoffs(); return; }
+
+            checkRosterCompliance();
+            enforceMinutes();
 
             GAME.schedule[GAME.day-1].forEach(g => {
                 playGame(GAME.teams[g.t1], GAME.teams[g.t2]);
             });
 
-            // Fatigue recovery
+            // Fatigue
             GAME.teams.forEach(t => t.roster.forEach(p => p.fatigue = Math.max(0, p.fatigue-15)));
             
             GAME.day++;
@@ -443,7 +492,6 @@
             if(s1 + Math.random()*20 > s2 + Math.random()*20) { t1.wins++; t2.losses++; }
             else { t2.wins++; t1.losses++; }
             
-            // Fatigue
             [t1,t2].forEach(t => t.roster.forEach(p => p.fatigue += p.minutes*0.3));
 
             if(t1 === GAME.teams[GAME.userId] || t2 === GAME.teams[GAME.userId]) {
@@ -459,12 +507,12 @@
             return s * 2 + t.coach.rating;
         }
 
-        /* --- 7. PLAYOFFS --- */
+        /* --- 8. PLAYOFFS --- */
         function startPlayoffs() {
             GAME.phase = 'playoffs';
             let sorted = [...GAME.teams].sort((a,b)=>b.wins-a.wins);
             GAME.playoffs = [];
-            // Top 8 vs Bottom 8 of top 16
+            // Top 8 vs Bottom 8
             for(let i=0; i<8; i++) GAME.playoffs.push({t1:sorted[i], t2:sorted[15-i]});
             GAME.news.unshift("Playoffs Begin!");
             updateUI();
@@ -487,21 +535,36 @@
             }
         }
 
-        /* --- 8. DRAFT & NEW SEASON --- */
+        /* --- 9. DRAFT & NEW SEASON --- */
         function startDraft() {
             GAME.phase = 'draft';
             GAME.draft = [];
-            for(let i=0; i<40; i++) GAME.draft.push(genPlayer(null, true));
+            for(let i=0; i<60; i++) GAME.draft.push(genPlayer(null, true)); // 60 prospects
             if(document.getElementById('legends-toggle').checked) {
                 ["M. Jordan","K. Bryant"].forEach(n=>GAME.draft.unshift(genPlayer(n,true)));
             }
+            // Auto draft for AI? We do it in draftPlayer
             updateUI();
         }
 
         function draftPlayer(idx) {
+            // User Picks
             let p = GAME.draft[idx];
             GAME.teams[GAME.userId].roster.push(p);
             alert(`Drafted ${p.name}`);
+            
+            // AI Picks (Everyone gets 1 player min)
+            GAME.teams.forEach((t, i) => {
+                if(i !== GAME.userId) {
+                    // Pick random remaining
+                    let randIdx = Math.floor(Math.random() * GAME.draft.length);
+                    if(GAME.draft[randIdx]) {
+                        t.roster.push(GAME.draft[randIdx]);
+                        GAME.draft.splice(randIdx, 1);
+                    }
+                }
+            });
+
             newSeason();
         }
 
@@ -514,16 +577,20 @@
                 t.roster.forEach(p => { p.age++; p.fatigue=0; p.contract--; });
                 t.roster = t.roster.filter(p => p.contract > 0);
             });
+            // Refill FA from cut players
+            checkRosterCompliance();
             genSchedule();
             alert("New Season Started!");
             updateUI();
         }
 
-        /* --- 9. MANAGEMENT ACTIONS --- */
+        /* --- 10. MANAGEMENT --- */
         function cutPlayer(pid) {
             let t = GAME.teams[GAME.userId];
-            if(t.roster.length <= 5) return alert("Roster too small");
-            t.roster = t.roster.filter(p => p.id !== pid);
+            if(t.roster.length <= 12) return alert("Min 12 Players required");
+            let p = t.roster.find(x => x.id === pid);
+            t.roster = t.roster.filter(x => x.id !== pid);
+            GAME.fa.push(p);
             updateUI();
         }
 
@@ -543,10 +610,11 @@
             let hire = pool[idx];
             if(type==='c') t.coach = hire; else t.scout = hire;
             pool.splice(idx,1);
+            pool.push(type==='c' ? {name:`Coach ${Math.random()}`, rating:3} : {name:`Scout`, rating:3});
             updateUI();
         }
 
-        /* --- 10. TRADE --- */
+        /* --- 11. TRADE --- */
         function updateTradeView() {
             GAME.trades = {my:[], their:[]};
             renderTrade();
@@ -587,7 +655,6 @@
             let theirVal = theirAssets.reduce((a,b)=>a+b.rating,0);
 
             if(myVal >= theirVal - 2) {
-                // Execute
                 user.roster = user.roster.filter(p=>!GAME.trades.my.includes(p.id)).concat(theirAssets);
                 target.roster = target.roster.filter(p=>!GAME.trades.their.includes(p.id)).concat(myAssets);
                 alert("Trade Accepted");
@@ -597,13 +664,12 @@
             }
         }
 
-        /* --- 11. UI UPDATE --- */
+        /* --- 12. UI UPDATE --- */
         function nav(p) {
             document.querySelectorAll('.page').forEach(e => e.classList.remove('active-page'));
             document.getElementById(p).classList.add('active-page');
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            // simple active highlight logic
-            if(p==='dashboard') event.target.classList.add('active'); // simplified
+            event.target.classList.add('active'); 
             
             if(p==='trade') {
                 const sel = document.getElementById('trade-target');
@@ -658,7 +724,7 @@
             // Rotation
             let tMin = user.roster.reduce((a,b)=>a+b.minutes,0);
             document.getElementById('total-mins').innerText = `${tMin}/240`;
-            document.getElementById('total-mins').style.color = tMin>240 ? 'red' : 'white';
+            document.getElementById('total-mins').style.color = tMin!==240 ? 'red' : '#00e676';
             document.getElementById('rotation-list').innerHTML = user.roster.map((p,i) => `
                 <div class="rotation-row ${i<5?'starter-row':''}">
                     <div>${i<5?'<span class="starter-tag">S</span>':''} <b>${p.name}</b></div>
