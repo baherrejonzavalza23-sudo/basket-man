@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Basketball Manager 2024</title>
+    <link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;600&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- CSS STYLES --- */
+        :root { --bg-dark: #121212; --bg-panel: #1e1e1e; --primary: #ff5722; --secondary: #00e676; --text: #fff; --gold: #ffd700; }
+        * { box-sizing: border-box; }
+        body { background-color: var(--bg-dark); color: var(--text); font-family: 'Roboto', sans-serif; margin: 0; overflow-y: hidden; }
+        h1, h2, h3, h4 { font-family: 'Teko', sans-serif; letter-spacing: 1px; margin: 0; text-transform: uppercase; }
+
+        /* MENU */
+        .main-menu-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0f1015; z-index: 9999; display: flex; justify-content: center; align-items: center; }
+        .menu-panel { background: #1e1e1e; border: 2px solid #333; padding: 30px; border-radius: 12px; width: 90%; max-width: 900px; max-height: 90vh; overflow-y: auto; }
+        .menu-grid { display: flex; gap: 20px; }
+        .menu-col { flex: 1; background: #252525; padding: 20px; border-radius: 8px; }
+        
+        .menu-dropdown { width: 100%; padding: 12px; background: #fff; color: #000; border-radius: 4px; margin-bottom: 10px; cursor: pointer; font-weight: bold; }
+        .action-btn { width: 100%; padding: 15px; background: var(--primary); color: white; border: none; font-weight: bold; font-size: 1.2rem; cursor: pointer; margin-top: 15px; }
+        .save-slot { background: #333; padding: 15px; margin-bottom: 10px; border-left: 5px solid #555; cursor: pointer; }
+        .save-slot.filled { border-left-color: var(--secondary); }
+
+        /* PREVIEW CARD */
+        .team-card { background: #111; padding: 15px; border-radius: 6px; margin-top: 10px; border: 1px solid #444; }
+        .preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .preview-ovr { background: #333; padding: 5px 10px; font-weight: bold; font-family: 'Teko'; font-size: 1.2rem; }
+
+        /* GAME UI */
+        #game-container { display: none; height: 100vh; flex-direction: column; }
+        header { background: #151515; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+        nav { background: #1e1e1e; display: flex; overflow-x: auto; flex-shrink: 0; }
+        .nav-btn { flex: 1; padding: 15px; background: none; border: none; color: #888; font-family: 'Teko'; font-size: 1.2rem; cursor: pointer; min-width: 80px; }
+        .nav-btn.active { color: white; background: #252525; border-bottom: 3px solid var(--primary); }
+
+        main { flex: 1; overflow-y: auto; padding: 20px; max-width: 1200px; margin: 0 auto; width: 100%; }
+        .page { display: none; animation: fadeIn 0.3s; }
+        .active-page { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* DASHBOARD */
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .dash-card { background: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 20px; }
+        .matchup { display: flex; justify-content: center; align-items: center; gap: 20px; margin: 20px 0; }
+        .team-circle { width: 60px; height: 60px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; font-family: 'Teko'; font-size: 1.5rem; border: 2px solid #555; }
+        .sim-controls { display: flex; flex-wrap: wrap; gap: 5px; }
+        .sim-btn { flex: 1; padding: 10px; background: var(--secondary); color: black; border: none; font-weight: bold; cursor: pointer; min-width: 80px; }
+        .sim-btn.secondary { background: #333; color: white; border: 1px solid #555; }
+
+        /* LISTS */
+        .scroll-list { max-height: 60vh; overflow-y: auto; background: #151515; border: 1px solid #333; }
+        .row { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #222; background: #1a1a1a; font-size: 0.9rem; }
+        .row:hover { background: #222; }
+        .pos-badge { background: #333; padding: 2px 6px; font-size: 0.75rem; border-radius: 3px; margin-right: 10px; width: 30px; text-align: center; }
+        .stat { font-family: 'Teko'; font-size: 1.1rem; width: 40px; text-align: center; }
+
+        /* ROTATION */
+        .starter-row { border-left: 3px solid var(--gold); background: linear-gradient(90deg, #2a2200 0%, #1a1a1a 30%); }
+        input[type=range] { flex: 1; margin: 0 10px; accent-color: var(--primary); }
+
+        /* TRADE */
+        .trade-ui { display: flex; height: 500px; gap: 10px; }
+        .trade-col { flex: 1; display: flex; flex-direction: column; background: #1e1e1e; }
+        .trade-list { flex: 1; overflow-y: auto; background: #111; }
+        .trade-mid { width: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+        .trade-card { padding: 10px; border-bottom: 1px solid #333; cursor: pointer; font-size: 0.8rem; }
+        .trade-card.selected { background: #263238; border-left: 3px solid var(--secondary); }
+        .trade-card b { display: block; font-size: 0.9rem; margin-bottom: 2px; }
+
+        /* OFFICE */
+        .office-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .staff-market { display: flex; overflow-x: auto; gap: 10px; padding: 10px 0; }
+        .staff-card { background: #111; padding: 10px; min-width: 120px; text-align: center; border: 1px solid #333; border-radius: 4px; }
+        
+        /* STANDINGS */
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; background: #252525; padding: 10px; color: #888; font-size: 0.8rem; }
+        td { padding: 10px; border-bottom: 1px solid #333; font-size: 0.9rem; }
+        .highlight { background: #2e3b32; color: white; font-weight: bold; border-left: 3px solid var(--secondary); }
+
+        @media(max-width: 768px) { .menu-grid, .dashboard-grid, .office-grid, .trade-ui { flex-direction: column; height: auto; } }
+    </style>
+</head>
+<body>
+
+    <div id="main-menu" class="main-menu-container">
+        <div class="menu-panel">
+            <h1 style="text-align:center; font-size:3rem; margin-bottom:20px;">BASKET MANAGER <span style="color:var(--primary)">24</span></h1>
+            <div class="menu-grid">
+                <div class="menu-col">
+                    <h2>NEW DYNASTY</h2>
+                    <br>
+                    <label>SELECT TEAM</label>
+                    <select id="team-select" class="menu-dropdown" onchange="updatePreview()">
+                        </select>
+                    
+                    <label><input type="checkbox" id="legends-toggle"> Include Legends in Draft?</label>
+
+                    <div class="team-card">
+                        <div class="preview-header">
+                            <h2 id="prev-name">LAKERS</h2>
+                            <div class="preview-ovr" id="prev-ovr">88</div>
+                        </div>
+                        <div style="color:#aaa; font-size:0.9rem;">
+                            <small>STARS</small>
+                            <div id="prev-stars">L. James, A. Davis</div>
+                        </div>
+                    </div>
+
+                    <button class="action-btn" onclick="startNewGame()">START CAREER</button>
+                </div>
+
+                <div class="menu-col">
+                    <h2>LOAD SAVE</h2>
+                    <br>
+                    <div class="save-slot" id="slot-1" onclick="loadGame(1)">SLOT 1: EMPTY</div>
+                    <div class="save-slot" id="slot-2" onclick="loadGame(2)">SLOT 2: EMPTY</div>
+                    <div class="save-slot" id="slot-3" onclick="loadGame(3)">SLOT 3: EMPTY</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-container">
+        <header>
+            <div>
+                <h2>BM24</h2>
+                <div id="header-record" style="color:var(--secondary)">0-0</div>
+            </div>
+            <div style="text-align:center">
+                <span id="header-year">2024</span> | <span id="header-day">DAY 1</span>
+            </div>
+            <div>
+                <button class="sim-btn secondary" onclick="saveGameData()">SAVE</button>
+                <button class="sim-btn secondary" onclick="exitToMenu()">EXIT</button>
+            </div>
+        </header>
+
+        <nav>
+            <button class="nav-btn active" onclick="nav('dashboard')">DASH</button>
+            <button class="nav-btn" onclick="nav('roster')">ROSTER</button>
+            <button class="nav-btn" onclick="nav('rotation')">ROTATION</button>
+            <button class="nav-btn" onclick="nav('office')">OFFICE</button>
+            <button class="nav-btn" onclick="nav('agency')">AGENCY</button>
+            <button class="nav-btn" onclick="nav('trade')">TRADE</button>
+            <button class="nav-btn" onclick="nav('standings')">STANDINGS</button>
+        </nav>
+
+        <main>
+            <div id="dashboard" class="page active-page">
+                <div class="dashboard-grid">
+                    <div id="season-hub" class="dash-card">
+                        <h3>NEXT MATCHUP</h3>
+                        <div class="matchup">
+                            <div class="team-circle" id="dash-my-logo">LAL</div>
+                            <h1>VS</h1>
+                            <div class="team-circle" id="dash-opp-logo">BOS</div>
+                        </div>
+                        <div style="text-align:center; margin-bottom:15px;" id="dash-opp-name">Boston Celtics</div>
+                        <div class="sim-controls">
+                            <button class="sim-btn" onclick="simDay()">PLAY DAY</button>
+                            <button class="sim-btn secondary" onclick="simWeek()">SIM WEEK</button>
+                            <button class="sim-btn secondary" onclick="simMonth()">SIM MONTH</button>
+                            <button class="sim-btn secondary" onclick="simDeadline()">DEADLINE</button>
+                            <button class="sim-btn secondary" onclick="simPlayoffs()">PLAYOFFS</button>
+                        </div>
+                    </div>
+
+                    <div id="playoff-hub" class="dash-card" style="display:none; border:2px solid gold;">
+                        <h3 style="color:gold">PLAYOFF BRACKET</h3>
+                        <div id="bracket-list" class="scroll-list" style="height:150px;"></div>
+                        <button class="sim-btn" style="background:gold; width:100%; margin-top:10px;" onclick="simRound()">SIM ROUND</button>
+                    </div>
+
+                    <div id="draft-hub" class="dash-card" style="display:none; border:2px solid var(--secondary);">
+                        <h3 style="color:var(--secondary)">DRAFT ROOM</h3>
+                        <div id="draft-list" class="scroll-list" style="height:200px;"></div>
+                    </div>
+
+                    <div class="dash-card">
+                        <h3>NEWS FEED</h3>
+                        <div id="news-list" class="scroll-list" style="height:200px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="roster" class="page">
+                <div class="row" style="background:#222; font-weight:bold;">
+                    <span>PLAYER</span> <span>AGE</span> <span>OVR</span> <span>FATIGUE</span>
+                </div>
+                <div id="roster-list" class="scroll-list"></div>
+            </div>
+
+            <div id="rotation" class="page">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                    <h3>ROTATION MINUTES</h3>
+                    <h3 id="total-mins">240/240</h3>
+                </div>
+                <div id="rotation-list" class="scroll-list"></div>
+            </div>
+
+            <div id="office" class="page">
+                <div class="office-grid">
+                    <div class="dash-card">
+                        <h3>STAFF MANAGEMENT</h3>
+                        <div id="current-staff" style="margin:10px 0;"></div>
+                        <h4>HIRE COACH</h4>
+                        <div id="coach-market" class="staff-market"></div>
+                        <h4>HIRE SCOUT</h4>
+                        <div id="scout-market" class="staff-market"></div>
+                    </div>
+                    <div class="dash-card">
+                        <h3>CAP SHEET</h3>
+                        <div id="cap-space" style="margin:10px 0; font-weight:bold; color:var(--secondary);"></div>
+                        <div id="contract-list" class="scroll-list" style="height:300px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="agency" class="page">
+                <h3>FREE AGENTS</h3>
+                <div id="fa-list" class="scroll-list"></div>
+            </div>
+
+            <div id="trade" class="page">
+                <div class="trade-ui">
+                    <div class="trade-col">
+                        <h3>MY ASSETS</h3>
+                        <div id="my-trade-list" class="trade-list"></div>
+                    </div>
+                    <div class="trade-mid">
+                        <label>TARGET TEAM</label>
+                        <select id="trade-target" class="menu-dropdown" onchange="updateTradeView()"></select>
+                        <button class="sim-btn" onclick="proposeTrade()">PROPOSE</button>
+                        <div id="trade-result" style="margin-top:10px; font-weight:bold;"></div>
+                    </div>
+                    <div class="trade-col">
+                        <h3>THEIR ASSETS</h3>
+                        <div id="their-trade-list" class="trade-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="standings" class="page">
+                <table>
+                    <thead><tr><th>RK</th><th>TEAM</th><th>W</th><th>L</th><th>DIFF</th></tr></thead>
+                    <tbody id="standings-list"></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        /* --- 1. DATASETS --- */
+        const POSITIONS = ["PG", "SG", "SF", "PF", "C"];
+        const TEAMS_DB = [
+            {name:"Atlanta Hawks", abbr:"ATL", color:"#E03A3E", players:["Trae Young","Dejounte Murray","Clint Capela","Bogdan Bogdanovic","Jalen Johnson","De'Andre Hunter","Onyeka Okongwu","Saddiq Bey","Kobe Bufkin","AJ Griffin","Bruno Fernando","Garrison Mathews","Wesley Matthews","Trent Forrest","Mouhamed Gueye"]},
+            {name:"Boston Celtics", abbr:"BOS", color:"#007A33", players:["Jayson Tatum","Jaylen Brown","Kristaps Porzingis","Jrue Holiday","Derrick White","Al Horford","Payton Pritchard","Sam Hauser","Luke Kornet","Xavier Tillman","Jaden Springer","Oshae Brissett","Svi Mykhailiuk","Neemias Queta","Jordan Walsh"]},
+            {name:"Brooklyn Nets", abbr:"BKN", color:"#000000", players:["Mikal Bridges","Cam Thomas","Nic Claxton","Cameron Johnson","Ben Simmons","Dennis Schroder","Dorian Finney-Smith","Day'Ron Sharpe","Lonnie Walker IV","Trendon Watford","Dennis Smith Jr.","Noah Clowney","Jalen Wilson","Keita Bates-Diop","Dariq Whitehead"]},
+            {name:"Charlotte Hornets", abbr:"CHA", color:"#1D1160", players:["LaMelo Ball","Brandon Miller","Miles Bridges","Mark Williams","Grant Williams","Tre Mann","Nick Richards","Vasilije Micic","Cody Martin","Seth Curry","Davis Bertans","Aleksej Pokusevski","Nick Smith Jr.","JT Thor","Bryce McGowens"]},
+            {name:"Chicago Bulls", abbr:"CHI", color:"#CE1141", players:["DeMar DeRozan","Zach LaVine","Nikola Vucevic","Coby White","Alex Caruso","Ayo Dosunmu","Patrick Williams","Andre Drummond","Torrey Craig","Jevon Carter","Dalen Terry","Julian Phillips","Onuralp Bitim","Adama Sanogo","Terry Taylor"]},
+            {name:"Cleveland Cavaliers", abbr:"CLE", color:"#860038", players:["Donovan Mitchell","Darius Garland","Evan Mobley","Jarrett Allen","Max Strus","Caris LeVert","Isaac Okoro","Georges Niang","Dean Wade","Sam Merrill","Tristan Thompson","Marcus Morris Sr.","Craig Porter Jr.","Damian Jones","Emoni Bates"]},
+            {name:"Dallas Mavericks", abbr:"DAL", color:"#00538C", players:["Luka Doncic","Kyrie Irving","P.J. Washington","Daniel Gafford","Dereck Lively II","Tim Hardaway Jr.","Derrick Jones Jr.","Josh Green","Maxi Kleber","Dante Exum","Jaden Hardy","Dwight Powell","Markieff Morris","A.J. Lawson","Olivier-Maxence Prosper"]},
+            {name:"Denver Nuggets", abbr:"DEN", color:"#0E2240", players:["Nikola Jokic","Jamal Murray","Aaron Gordon","Michael Porter Jr.","Kentavious Caldwell-Pope","Reggie Jackson","Christian Braun","Peyton Watson","DeAndre Jordan","Justin Holiday","Zeke Nnaji","Julian Strawther","Vlatko Cancar","Jalen Pickett","Hunter Tyson"]},
+            {name:"Detroit Pistons", abbr:"DET", color:"#C8102E", players:["Cade Cunningham","Jalen Duren","Jaden Ivey","Ausar Thompson","Isaiah Stewart","Simone Fontecchio","Quentin Grimes","Marcus Sasser","Evan Fournier","Troy Brown Jr.","Malachi Flynn","James Wiseman","Chimezie Metu","Shake Milton","Taj Gibson"]},
+            {name:"Golden State Warriors", abbr:"GSW", color:"#1D428A", players:["Stephen Curry","Klay Thompson","Draymond Green","Jonathan Kuminga","Andrew Wiggins","Chris Paul","Brandin Podziemski","Trayce Jackson-Davis","Kevon Looney","Gary Payton II","Moses Moody","Dario Saric","Lester Quinones","Gui Santos","Usman Garuba"]},
+            {name:"Houston Rockets", abbr:"HOU", color:"#CE1141", players:["Alperen Sengun","Jalen Green","Fred VanVleet","Jabari Smith Jr.","Dillon Brooks","Amen Thompson","Cam Whitmore","Tari Eason","Jeff Green","Jock Landale","Aaron Holiday","Jae'Sean Tate","Reggie Bullock","Boban Marjanovic","Nate Hinton"]},
+            {name:"Indiana Pacers", abbr:"IND", color:"#002D62", players:["Tyrese Haliburton","Pascal Siakam","Myles Turner","Aaron Nesmith","Andrew Nembhard","Bennedict Mathurin","Obi Toppin","T.J. McConnell","Jalen Smith","Isaiah Jackson","Ben Sheppard","Jarace Walker","Doug McDermott","Kendall Brown","James Johnson"]},
+            {name:"LA Clippers", abbr:"LAC", color:"#C8102E", players:["Kawhi Leonard","Paul George","James Harden","Ivica Zubac","Terance Mann","Russell Westbrook","Norman Powell","Mason Plumlee","Daniel Theis","Amir Coffey","P.J. Tucker","Bones Hyland","Brandon Boston Jr.","Kobe Brown","Moussa Diabate"]},
+            {name:"LA Lakers", abbr:"LAL", color:"#552583", players:["LeBron James","Anthony Davis","D'Angelo Russell","Austin Reaves","Rui Hachimura","Jarred Vanderbilt","Taurean Prince","Spencer Dinwiddie","Gabe Vincent","Christian Wood","Jaxson Hayes","Cam Reddish","Max Christie","Jalen Hood-Schifino","Maxwell Lewis"]},
+            {name:"Memphis Grizzlies", abbr:"MEM", color:"#5D76A9", players:["Ja Morant","Jaren Jackson Jr.","Desmond Bane","Marcus Smart","Vince Williams Jr.","GG Jackson","Santi Aldama","Luke Kennard","Brandon Clarke","Derrick Rose","Ziaire Williams","John Konchar","Lamar Stevens","Jake LaRavia","Yuta Watanabe"]},
+            {name:"Miami Heat", abbr:"MIA", color:"#98002E", players:["Jimmy Butler","Bam Adebayo","Tyler Herro","Terry Rozier","Jaime Jaquez Jr.","Duncan Robinson","Caleb Martin","Nikola Jovic","Kevin Love","Haywood Highsmith","Josh Richardson","Delon Wright","Thomas Bryant","Patty Mills","Orlando Robinson"]},
+            {name:"Milwaukee Bucks", abbr:"MIL", color:"#00471B", players:["Giannis Antetokounmpo","Damian Lillard","Khris Middleton","Brook Lopez","Malik Beasley","Bobby Portis","Patrick Beverley","Jae Crowder","Pat Connaughton","AJ Green","MarJon Beauchamp","Thanasis Antetokounmpo","Danilo Gallinari","Andre Jackson Jr.","Chris Livingston"]},
+            {name:"Minnesota Timberwolves", abbr:"MIN", color:"#0C2340", players:["Anthony Edwards","Karl-Anthony Towns","Rudy Gobert","Mike Conley","Jaden McDaniels","Naz Reid","Nickeil Alexander-Walker","Kyle Anderson","Monte Morris","Jordan McLaughlin","Luka Garza","Josh Minott","Wendell Moore Jr.","Leonard Miller","T.J. Warren"]},
+            {name:"New Orleans Pelicans", abbr:"NOP", color:"#0C2340", players:["Zion Williamson","Brandon Ingram","CJ McCollum","Jonas Valanciunas","Herb Jones","Trey Murphy III","Larry Nance Jr.","Jose Alvarado","Naji Marshall","Dyson Daniels","Jordan Hawkins","Matt Ryan","Jeremiah Robinson-Earl","Cody Zeller","E.J. Liddell"]},
+            {name:"New York Knicks", abbr:"NYK", color:"#006BB6", players:["Jalen Brunson","Julius Randle","OG Anunoby","Josh Hart","Isaiah Hartenstein","Donte DiVincenzo","Mitchell Robinson","Bojan Bogdanovic","Precious Achiuwa","Alec Burks","Miles McBride","Jericho Sims","Shake Milton","Mamadi Diakite","DaQuan Jeffries"]},
+            {name:"Oklahoma City Thunder", abbr:"OKC", color:"#007AC1", players:["Shai Gilgeous-Alexander","Chet Holmgren","Jalen Williams","Josh Giddey","Lu Dort","Isaiah Joe","Cason Wallace","Gordon Hayward","Aaron Wiggins","Jaylin Williams","Kenrich Williams","Ousmane Dieng","Bismack Biyombo","Mike Muscala","Lindy Waters III"]},
+            {name:"Orlando Magic", abbr:"ORL", color:"#0077C0", players:["Paolo Banchero","Franz Wagner","Jalen Suggs","Wendell Carter Jr.","Markelle Fultz","Cole Anthony","Moritz Wagner","Jonathan Isaac","Gary Harris","Joe Ingles","Goga Bitadze","Anthony Black","Caleb Houstan","Chuma Okeke","Admiral Schofield"]},
+            {name:"Philadelphia 76ers", abbr:"PHI", color:"#006BB6", players:["Joel Embiid","Tyrese Maxey","Tobias Harris","Kelly Oubre Jr.","Kyle Lowry","Buddy Hield","Nicolas Batum","De'Anthony Melton","Paul Reed","Cameron Payne","Robert Covington","Mo Bamba","KJ Martin","Ricky Council IV","Jeff Dowtin"]},
+            {name:"Phoenix Suns", abbr:"PHX", color:"#1D1160", players:["Kevin Durant","Devin Booker","Bradley Beal","Jusuf Nurkic","Grayson Allen","Eric Gordon","Royce O'Neale","Drew Eubanks","Bol Bol","Josh Okogie","Nassir Little","Damion Lee","Thaddeus Young","Isaiah Thomas","David Roddy"]},
+            {name:"Portland Trail Blazers", abbr:"POR", color:"#E03A3E", players:["Anfernee Simons","Jerami Grant","Deandre Ayton","Scoot Henderson","Shaedon Sharpe","Malcolm Brogdon","Toumani Camara","Jabari Walker","Duop Reath","Matisse Thybulle","Dalano Banton","Kris Murray","Rayan Rupert","Moses Brown","Ashton Hagans"]},
+            {name:"Sacramento Kings", abbr:"SAC", color:"#5A2D81", players:["De'Aaron Fox","Domantas Sabonis","Keegan Murray","Malik Monk","Harrison Barnes","Kevin Huerter","Trey Lyles","Davion Mitchell","Keon Ellis","Alex Len","Chris Duarte","Sasha Vezenkov","JaVale McGee","Kessler Edwards","Mason Jones"]},
+            {name:"San Antonio Spurs", abbr:"SAS", color:"#C4CED4", players:["Victor Wembanyama","Devin Vassell","Jeremy Sochan","Tre Jones","Keldon Johnson","Zach Collins","Julian Champagnie","Malaki Branham","Cedi Osman","Blake Wesley","Sandro Mamukelashvili","Dominick Barlow","Devonte' Graham","Charles Bassey","Sidy Cissoko"]},
+            {name:"Toronto Raptors", abbr:"TOR", color:"#CE1141", players:["Scottie Barnes","RJ Barrett","Immanuel Quickley","Jakob Poeltl","Gary Trent Jr.","Kelly Olynyk","Bruce Brown","Gradey Dick","Ochai Agbaji","Jordan Nwora","Chris Boucher","Jalen McDaniels","Garrett Temple","Mouhamadou Gueye","Javon Freeman-Liberty"]},
+            {name:"Utah Jazz", abbr:"UTA", color:"#002B5C", players:["Lauri Markkanen","Collin Sexton","John Collins","Jordan Clarkson","Walker Kessler","Keyonte George","Taylor Hendricks","Brice Sensabaugh","Kris Dunn","Talen Horton-Tucker","Luka Samanic","Omer Yurtseven","Kenneth Lofton Jr.","Jason Preston","Darius Bazley"]},
+            {name:"Washington Wizards", abbr:"WAS", color:"#002B5C", players:["Kyle Kuzma","Jordan Poole","Tyus Jones","Deni Avdija","Corey Kispert","Bilal Coulibaly","Marvin Bagley III","Richaun Holmes","Landry Shamet","Anthony Gill","Johnny Davis","Patrick Baldwin Jr.","Eugene Omoruyi","Jared Butler","Tristan Vukcevic"]}
+        ];
+        const REAL_FA = ["John Wall","Blake Griffin","DeMarcus Cousins","Dwight Howard","Kemba Walker","Danny Green","George Hill","Ish Smith","Will Barton"];
+        const REAL_COACHES = ["Steve Kerr","Erik Spoelstra","Gregg Popovich","Tyronn Lue","Nick Nurse","Joe Mazzulla","Michael Malone","Rick Carlisle","Tom Thibodeau"];
+        const REAL_SCOUTS = ["Jerry West","Danny Ainge","Pat Riley","Sam Presti","Masai Ujiri"];
+
+        /* --- 2. GAME STATE --- */
+        let GAME = {
+            userId: 0,
+            year: 2024,
+            day: 1,
+            phase: 'regular', // regular, playoffs, draft
+            teams: [],
+            schedule: [],
+            news: [],
+            fa: [],
+            staffPool: {c:[], s:[]},
+            trades: {my:[], their:[]},
+            playoffs: []
+        };
+        const CAP_MAX = 140000000;
+        const DEADLINE = 50;
+        const SEASON_LEN = 82;
+
+        /* --- 3. INIT --- */
+        window.onload = () => {
+            const sel = document.getElementById('team-select');
+            TEAMS_DB.forEach((t, i) => {
+                let opt = document.createElement('option');
+                opt.value = i; opt.innerText = t.name;
+                sel.appendChild(opt);
+            });
+            updatePreview();
+            updateSlots();
+        };
+
+        function updatePreview() {
+            const idx = document.getElementById('team-select').value;
+            const t = TEAMS_DB[idx];
+            document.getElementById('prev-name').innerText = t.name;
+            document.getElementById('prev-stars').innerText = t.players.slice(0,2).join(", ");
+            document.getElementById('prev-ovr').innerText = "8" + Math.floor(Math.random()*9);
+        }
+
+        function updateSlots() {
+            for(let i=1; i<=3; i++) {
+                let d = localStorage.getItem('bm_save_'+i);
+                if(d) {
+                    let p = JSON.parse(d);
+                    document.getElementById('slot-'+i).innerText = `SLOT ${i}: ${p.teams[p.userId].abbr} (Yr ${p.year})`;
+                    document.getElementById('slot-'+i).classList.add('filled');
+                }
+            }
+        }
+
+        /* --- 4. START / LOAD --- */
+        function startNewGame() {
+            const tid = document.getElementById('team-select').value;
+            GAME.userId = parseInt(tid);
+            GAME.year = 2024;
+            GAME.day = 1;
+            GAME.phase = 'regular';
+            GAME.teams = TEAMS_DB.map(t => genTeam(t));
+            GAME.fa = REAL_FA.map(n => genPlayer(n, true));
+            while(GAME.fa.length < 20) GAME.fa.push(genPlayer(null, false));
+            
+            // Staff
+            GAME.staffPool.c = REAL_COACHES.map(n => ({name:n, rating:4+Math.floor(Math.random()*2)}));
+            GAME.staffPool.s = REAL_SCOUTS.map(n => ({name:n, rating:4+Math.floor(Math.random()*2)}));
+
+            genSchedule();
+            GAME.news.push("Welcome to the 2024-25 Season!");
+            enterGame();
+        }
+
+        function loadGame(slot) {
+            let d = localStorage.getItem('bm_save_'+slot);
+            if(d) { GAME = JSON.parse(d); enterGame(); }
+            else alert("Slot Empty");
+        }
+
+        function enterGame() {
+            document.getElementById('main-menu').style.display = 'none';
+            document.getElementById('game-container').style.display = 'flex';
+            nav('dashboard');
+            updateUI();
+        }
+
+        function saveGameData() {
+            localStorage.setItem('bm_save_1', JSON.stringify(GAME));
+            alert("Saved to Slot 1");
+        }
+        function exitToMenu() { location.reload(); }
+
+        /* --- 5. GENERATORS --- */
+        function genTeam(tmpl) {
+            let roster = tmpl.players.map((n, i) => genPlayer(n, i<3));
+            roster.forEach((p, i) => {
+                p.pos = POSITIONS[i%5];
+                p.minutes = i<5 ? 35 : (i<10?13:0);
+            });
+            return {
+                name: tmpl.name, abbr: tmpl.abbr, color: tmpl.color,
+                roster: roster, wins: 0, losses: 0,
+                coach: {name:`Coach ${Math.floor(Math.random()*900)}`, rating: Math.floor(Math.random()*5)+1},
+                scout: {name:`Scout ${Math.floor(Math.random()*900)}`, rating: Math.floor(Math.random()*5)+1}
+            };
+        }
+
+        function genPlayer(name, isStar) {
+            let rat = isStar ? 85+Math.floor(Math.random()*14) : 70+Math.floor(Math.random()*10);
+            if(!name) { name = `Player ${Math.floor(Math.random()*9000)}`; rat -= 5; }
+            return {
+                id: Math.random().toString(36).substr(2,9),
+                name: name, rating: rat, age: 19+Math.floor(Math.random()*15),
+                salary: Math.floor(rat*250000), contract: Math.floor(Math.random()*4)+1,
+                fatigue: 0, minutes: 0
+            };
+        }
+
+        function genSchedule() {
+            GAME.schedule = [];
+            for(let d=1; d<=SEASON_LEN; d++) {
+                let games = [];
+                let idx = Array.from({length:30}, (_,i)=>i).sort(()=>Math.random()-.5);
+                for(let i=0; i<30; i+=2) games.push({t1:idx[i], t2:idx[i+1]});
+                GAME.schedule.push(games);
+            }
+        }
+
+        /* --- 6. SIMULATION --- */
+        function simDay() {
+            if(GAME.phase !== 'regular') return;
+            if(GAME.day > SEASON_LEN) { startPlayoffs(); return; }
+
+            GAME.schedule[GAME.day-1].forEach(g => {
+                playGame(GAME.teams[g.t1], GAME.teams[g.t2]);
+            });
+
+            // Fatigue recovery
+            GAME.teams.forEach(t => t.roster.forEach(p => p.fatigue = Math.max(0, p.fatigue-15)));
+            
+            GAME.day++;
+            if(GAME.day > SEASON_LEN) startPlayoffs();
+            updateUI();
+        }
+
+        function simWeek() { for(let i=0; i<7; i++) if(GAME.phase==='regular') simDay(); }
+        function simMonth() { for(let i=0; i<30; i++) if(GAME.phase==='regular') simDay(); }
+        function simDeadline() { while(GAME.day < DEADLINE && GAME.phase==='regular') simDay(); }
+        function simPlayoffs() { while(GAME.phase==='regular') simDay(); }
+
+        function playGame(t1, t2) {
+            let s1 = getStrength(t1);
+            let s2 = getStrength(t2) + 3; // Home Adv
+            if(s1 + Math.random()*20 > s2 + Math.random()*20) { t1.wins++; t2.losses++; }
+            else { t2.wins++; t1.losses++; }
+            
+            // Fatigue
+            [t1,t2].forEach(t => t.roster.forEach(p => p.fatigue += p.minutes*0.3));
+
+            if(t1 === GAME.teams[GAME.userId] || t2 === GAME.teams[GAME.userId]) {
+                let win = (t1===GAME.teams[GAME.userId] && s1>s2) || (t2===GAME.teams[GAME.userId] && s2>s1);
+                let opp = t1===GAME.teams[GAME.userId] ? t2.name : t1.name;
+                GAME.news.unshift(`Day ${GAME.day}: ${win?"WIN":"LOSS"} vs ${opp}`);
+            }
+        }
+
+        function getStrength(t) {
+            let s = 0;
+            t.roster.forEach(p => s += (p.rating - (p.fatigue>50?5:0)) * (p.minutes/48));
+            return s * 2 + t.coach.rating;
+        }
+
+        /* --- 7. PLAYOFFS --- */
+        function startPlayoffs() {
+            GAME.phase = 'playoffs';
+            let sorted = [...GAME.teams].sort((a,b)=>b.wins-a.wins);
+            GAME.playoffs = [];
+            // Top 8 vs Bottom 8 of top 16
+            for(let i=0; i<8; i++) GAME.playoffs.push({t1:sorted[i], t2:sorted[15-i]});
+            GAME.news.unshift("Playoffs Begin!");
+            updateUI();
+        }
+
+        function simRound() {
+            let winners = [];
+            GAME.playoffs.forEach(m => {
+                let w = getStrength(m.t1) > getStrength(m.t2) ? m.t1 : m.t2;
+                winners.push(w);
+                GAME.news.unshift(`${w.name} advances`);
+            });
+            if(winners.length === 1) {
+                alert(`${winners[0].name} Wins Title!`);
+                startDraft();
+            } else {
+                GAME.playoffs = [];
+                for(let i=0; i<winners.length; i+=2) GAME.playoffs.push({t1:winners[i], t2:winners[i+1]});
+                updateUI();
+            }
+        }
+
+        /* --- 8. DRAFT & NEW SEASON --- */
+        function startDraft() {
+            GAME.phase = 'draft';
+            GAME.draft = [];
+            for(let i=0; i<40; i++) GAME.draft.push(genPlayer(null, true));
+            if(document.getElementById('legends-toggle').checked) {
+                ["M. Jordan","K. Bryant"].forEach(n=>GAME.draft.unshift(genPlayer(n,true)));
+            }
+            updateUI();
+        }
+
+        function draftPlayer(idx) {
+            let p = GAME.draft[idx];
+            GAME.teams[GAME.userId].roster.push(p);
+            alert(`Drafted ${p.name}`);
+            newSeason();
+        }
+
+        function newSeason() {
+            GAME.year++;
+            GAME.day = 1;
+            GAME.phase = 'regular';
+            GAME.teams.forEach(t => {
+                t.wins=0; t.losses=0;
+                t.roster.forEach(p => { p.age++; p.fatigue=0; p.contract--; });
+                t.roster = t.roster.filter(p => p.contract > 0);
+            });
+            genSchedule();
+            alert("New Season Started!");
+            updateUI();
+        }
+
+        /* --- 9. MANAGEMENT ACTIONS --- */
+        function cutPlayer(pid) {
+            let t = GAME.teams[GAME.userId];
+            if(t.roster.length <= 5) return alert("Roster too small");
+            t.roster = t.roster.filter(p => p.id !== pid);
+            updateUI();
+        }
+
+        function signFA(idx) {
+            if(GAME.phase === 'regular' && GAME.day > DEADLINE) return alert("Deadline Passed");
+            let t = GAME.teams[GAME.userId];
+            if(t.roster.length >= 15) return alert("Roster Full");
+            let p = GAME.fa[idx];
+            t.roster.push(p);
+            GAME.fa.splice(idx,1);
+            updateUI();
+        }
+
+        function hireStaff(type, idx) {
+            let t = GAME.teams[GAME.userId];
+            let pool = type==='c' ? GAME.staffPool.c : GAME.staffPool.s;
+            let hire = pool[idx];
+            if(type==='c') t.coach = hire; else t.scout = hire;
+            pool.splice(idx,1);
+            updateUI();
+        }
+
+        /* --- 10. TRADE --- */
+        function updateTradeView() {
+            GAME.trades = {my:[], their:[]};
+            renderTrade();
+        }
+
+        function toggleTrade(pid, side) {
+            let arr = GAME.trades[side];
+            if(arr.includes(pid)) arr.splice(arr.indexOf(pid),1);
+            else arr.push(pid);
+            renderTrade();
+        }
+
+        function renderTrade() {
+            const user = GAME.teams[GAME.userId];
+            const target = GAME.teams[document.getElementById('trade-target').value];
+            
+            const mk = (t, side, el) => {
+                document.getElementById(el).innerHTML = t.roster.map(p => `
+                    <div class="trade-card ${GAME.trades[side].includes(p.id)?'selected':''}" onclick="toggleTrade('${p.id}','${side}')">
+                        <b>${p.name}</b> Ovr:${p.rating} | Age:${p.age} | $${(p.salary/1e6).toFixed(1)}M
+                    </div>
+                `).join('');
+            };
+            mk(user, 'my', 'my-trade-list');
+            mk(target, 'their', 'their-trade-list');
+        }
+
+        function proposeTrade() {
+            if(GAME.phase === 'regular' && GAME.day > DEADLINE) return alert("Deadline Passed");
+            let user = GAME.teams[GAME.userId];
+            let target = GAME.teams[document.getElementById('trade-target').value];
+            let myAssets = user.roster.filter(p => GAME.trades.my.includes(p.id));
+            let theirAssets = target.roster.filter(p => GAME.trades.their.includes(p.id));
+            
+            if(myAssets.length === 0 && theirAssets.length === 0) return;
+
+            let myVal = myAssets.reduce((a,b)=>a+b.rating,0);
+            let theirVal = theirAssets.reduce((a,b)=>a+b.rating,0);
+
+            if(myVal >= theirVal - 2) {
+                // Execute
+                user.roster = user.roster.filter(p=>!GAME.trades.my.includes(p.id)).concat(theirAssets);
+                target.roster = target.roster.filter(p=>!GAME.trades.their.includes(p.id)).concat(myAssets);
+                alert("Trade Accepted");
+                updateTradeView();
+            } else {
+                document.getElementById('trade-result').innerText = "Trade Rejected";
+            }
+        }
+
+        /* --- 11. UI UPDATE --- */
+        function nav(p) {
+            document.querySelectorAll('.page').forEach(e => e.classList.remove('active-page'));
+            document.getElementById(p).classList.add('active-page');
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            // simple active highlight logic
+            if(p==='dashboard') event.target.classList.add('active'); // simplified
+            
+            if(p==='trade') {
+                const sel = document.getElementById('trade-target');
+                sel.innerHTML = "";
+                GAME.teams.forEach((t,i) => { if(i!==GAME.userId) sel.innerHTML+=`<option value="${i}">${t.name}</option>`; });
+                updateTradeView();
+            }
+            updateUI();
+        }
+
+        function updateUI() {
+            const user = GAME.teams[GAME.userId];
+            document.getElementById('header-record').innerText = `${user.wins}-${user.losses}`;
+            document.getElementById('header-year').innerText = GAME.year;
+            document.getElementById('header-day').innerText = GAME.phase==='regular' ? `DAY ${GAME.day}` : GAME.phase.toUpperCase();
+
+            // Dash
+            if(GAME.phase==='regular') {
+                document.getElementById('season-hub').style.display='block';
+                document.getElementById('playoff-hub').style.display='none';
+                document.getElementById('draft-hub').style.display='none';
+                let next = GAME.schedule[GAME.day-1]?.find(g=>g.t1===GAME.userId||g.t2===GAME.userId);
+                if(next) {
+                    let opp = next.t1===GAME.userId ? GAME.teams[next.t2] : GAME.teams[next.t1];
+                    document.getElementById('dash-opp-name').innerText = opp.name;
+                    document.getElementById('dash-opp-logo').innerText = opp.abbr;
+                    document.getElementById('dash-my-logo').innerText = user.abbr;
+                } else {
+                    document.getElementById('dash-opp-name').innerText = "OFF DAY";
+                }
+            } else if (GAME.phase==='playoffs') {
+                document.getElementById('season-hub').style.display='none';
+                document.getElementById('playoff-hub').style.display='block';
+                document.getElementById('bracket-list').innerHTML = GAME.playoffs.map(m => `<div class="row"><span>${m.t1.abbr} vs ${m.t2.abbr}</span></div>`).join('');
+            } else {
+                document.getElementById('season-hub').style.display='none';
+                document.getElementById('playoff-hub').style.display='none';
+                document.getElementById('draft-hub').style.display='block';
+                document.getElementById('draft-list').innerHTML = GAME.draft.map((p,i) => `<div class="row"><span>${p.name} (${p.rating})</span><button onclick="draftPlayer(${i})">DRAFT</button></div>`).join('');
+            }
+
+            document.getElementById('news-list').innerHTML = GAME.news.slice(0,6).map(n => `<div class="row">${n}</div>`).join('');
+
+            // Roster
+            document.getElementById('roster-list').innerHTML = user.roster.map(p => `
+                <div class="row">
+                    <div style="display:flex;align-items:center"><span class="pos-badge">${p.pos}</span> ${p.name}</div>
+                    <span class="stat">${p.age}</span> <span class="stat">${p.rating}</span> <span class="stat">${Math.floor(p.fatigue)}%</span>
+                </div>
+            `).join('');
+
+            // Rotation
+            let tMin = user.roster.reduce((a,b)=>a+b.minutes,0);
+            document.getElementById('total-mins').innerText = `${tMin}/240`;
+            document.getElementById('total-mins').style.color = tMin>240 ? 'red' : 'white';
+            document.getElementById('rotation-list').innerHTML = user.roster.map((p,i) => `
+                <div class="rotation-row ${i<5?'starter-row':''}">
+                    <div>${i<5?'<span class="starter-tag">S</span>':''} <b>${p.name}</b></div>
+                    <input type="range" max="48" value="${p.minutes}" oninput="GAME.teams[GAME.userId].roster.find(x=>x.id=='${p.id}').minutes=parseInt(this.value); updateUI()">
+                    <span>${p.minutes}m</span>
+                </div>
+            `).join('');
+
+            // Office
+            document.getElementById('current-staff').innerHTML = `Coach: <b>${user.coach.name}</b> (${user.coach.rating}*) <br> Scout: <b>${user.scout.name}</b> (${user.scout.rating}*)`;
+            document.getElementById('coach-market').innerHTML = GAME.staffPool.c.map((s,i) => `<div class="staff-card">${s.name} (${s.rating}) <br> <button onclick="hireStaff('c',${i})">HIRE</button></div>`).join('');
+            document.getElementById('scout-market').innerHTML = GAME.staffPool.s.map((s,i) => `<div class="staff-card">${s.name} (${s.rating}) <br> <button onclick="hireStaff('s',${i})">HIRE</button></div>`).join('');
+            
+            let payroll = user.roster.reduce((a,b)=>a+b.salary,0);
+            document.getElementById('cap-space').innerText = `PAYROLL: $${(payroll/1e6).toFixed(1)}M / CAP: $140M`;
+            document.getElementById('contract-list').innerHTML = user.roster.map(p => `
+                <div class="row"><span>${p.name}</span> <span>$${(p.salary/1e6).toFixed(1)}M (${p.contract}y)</span> <button style="background:red; color:white; border:none;" onclick="cutPlayer('${p.id}')">CUT</button></div>
+            `).join('');
+
+            // Agency
+            document.getElementById('fa-list').innerHTML = GAME.fa.map((p,i) => `
+                <div class="row"><b>${p.name}</b> (${p.rating}) <button class="sim-btn" style="padding:2px 5px;" onclick="signFA(${i})">SIGN</button></div>
+            `).join('');
+
+            // Standings
+            let sorted = [...GAME.teams].sort((a,b)=>b.wins-a.wins);
+            document.getElementById('standings-list').innerHTML = sorted.map((t,i) => `
+                <tr class="${t===user?'highlight':''}"><td>${i+1}</td><td>${t.abbr}</td><td>${t.wins}</td><td>${t.losses}</td><td>${t.wins-t.losses}</td></tr>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
